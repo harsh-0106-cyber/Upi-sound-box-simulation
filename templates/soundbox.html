@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔊 UPI Sound Box</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#080810;color:#e2e8f0;min-height:100vh;overflow-x:hidden}
+.top-bar{display:flex;align-items:center;justify-content:space-between;padding:.8rem 1.5rem;background:rgba(255,255,255,.02);border-bottom:1px solid rgba(255,255,255,.05)}
+.top-bar h1{font-size:1rem;font-weight:600}
+.top-bar .right{display:flex;align-items:center;gap:1rem}
+.dot{width:8px;height:8px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.conn{display:flex;align-items:center;gap:.4rem;font-size:.7rem;color:#64748b}
+
+/* Security Toggle */
+.toggle-wrap{display:flex;align-items:center;gap:.6rem}
+.toggle-label{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.toggle-label.off{color:#f87171}
+.toggle-label.on{color:#34d399}
+.switch{position:relative;width:48px;height:26px;cursor:pointer}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;inset:0;background:#1e293b;border-radius:26px;transition:.3s;border:2px solid rgba(255,255,255,.1)}
+.slider::before{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#f87171;bottom:2px;left:3px;transition:.3s}
+input:checked+.slider{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.4)}
+input:checked+.slider::before{transform:translateX(21px);background:#10b981}
+
+/* Payment Display */
+.display-area{margin:1.5rem;padding:2.5rem 1.5rem;border-radius:20px;text-align:center;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);transition:all .4s ease;min-height:160px;display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden}
+.display-area.accepted{animation:flashGreen .8s ease;border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.05)}
+.display-area.rejected{animation:flashRed .8s ease;border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.05)}
+@keyframes flashGreen{0%{box-shadow:0 0 0 rgba(16,185,129,0)}30%{box-shadow:0 0 60px rgba(16,185,129,.3)}100%{box-shadow:0 0 0 rgba(16,185,129,0)}}
+@keyframes flashRed{0%{box-shadow:0 0 0 rgba(239,68,68,0)}30%{box-shadow:0 0 60px rgba(239,68,68,.3)}100%{box-shadow:0 0 0 rgba(239,68,68,0)}}
+.display-area .icon{font-size:2.5rem;margin-bottom:.5rem}
+.display-area .amount{font-size:2.2rem;font-weight:800}
+.display-area .amount.green{color:#34d399}
+.display-area .amount.red{color:#f87171}
+.display-area .detail{font-size:.85rem;color:#94a3b8;margin-top:.3rem}
+.display-area .waiting{color:#475569;font-size:1rem}
+.display-area .source-tag{display:inline-block;margin-top:.6rem;padding:.2rem .7rem;border-radius:20px;font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.source-tag.auth{background:rgba(59,130,246,.15);color:#60a5fa}
+.source-tag.attack{background:rgba(239,68,68,.15);color:#f87171}
+
+/* Activate Sound */
+.activate-bar{text-align:center;padding:0 1.5rem;margin-bottom:.5rem}
+.activate-btn{padding:.6rem 1.5rem;background:linear-gradient(135deg,#10b981,#14b8a6);border:none;border-radius:10px;color:#fff;font-weight:600;font-size:.85rem;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s}
+.activate-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(16,185,129,.3)}
+.activate-btn.active{background:#1e293b;color:#34d399;cursor:default}
+
+/* Security Log & History Cards */
+.section{margin:0 1.5rem 1.5rem;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:16px;overflow:hidden}
+.section-header{padding:.8rem 1.2rem;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.05);font-size:.8rem;font-weight:600;display:flex;align-items:center;gap:.5rem}
+.section-body{padding:1rem 1.2rem;max-height:300px;overflow-y:auto}
+
+/* Security Check Items */
+.check{display:flex;align-items:flex-start;gap:.6rem;padding:.5rem 0;border-bottom:1px solid rgba(255,255,255,.03);font-size:.78rem;animation:slideIn .3s ease}
+.check:last-child{border-bottom:none}
+@keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+.check .icon-sm{font-size:.9rem;flex-shrink:0;margin-top:1px}
+.check .name{font-weight:600;color:#cbd5e1}
+.check .detail{color:#64748b;font-family:'Fira Code',monospace;font-size:.7rem;margin-top:2px}
+.check.pass .name{color:#34d399}
+.check.fail .name{color:#f87171}
+.verdict{text-align:center;padding:.8rem;font-weight:700;font-size:.9rem;border-radius:8px;margin-top:.5rem}
+.verdict.pass{background:rgba(16,185,129,.1);color:#34d399;border:1px solid rgba(16,185,129,.2)}
+.verdict.fail{background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2)}
+
+/* History Items */
+.hist{padding:.6rem .8rem;border-radius:8px;margin-bottom:.4rem;font-size:.8rem;animation:slideIn .3s ease}
+.hist.ok{background:rgba(16,185,129,.05);border-left:3px solid #10b981}
+.hist.blocked{background:rgba(239,68,68,.05);border-left:3px solid #ef4444}
+.hist .h-amount{font-weight:700}
+.hist .h-meta{font-size:.7rem;color:#64748b;margin-top:2px}
+.empty-state{text-align:center;color:#475569;font-size:.8rem;padding:1.5rem}
+
+/* Info panel */
+.info-panel{margin:0 1.5rem 1.5rem;background:rgba(99,102,241,.04);border:1px solid rgba(99,102,241,.12);border-radius:12px;padding:1rem 1.2rem}
+.info-panel h3{font-size:.75rem;color:#818cf8;margin-bottom:.4rem;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.info-panel ul{list-style:none;font-size:.72rem;color:#94a3b8;line-height:1.8}
+.info-panel ul li::before{content:'🔐 ';font-size:.7rem}
+.back{display:inline-flex;align-items:center;gap:.3rem;color:#64748b;text-decoration:none;font-size:.75rem;margin:1rem 0 0 1.5rem}
+.back:hover{color:#94a3b8}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <h1>🔊 UPI Sound Box</h1>
+  <div class="right">
+    <div class="toggle-wrap">
+      <span class="toggle-label off" id="lblOff">INSECURE</span>
+      <label class="switch"><input type="checkbox" id="secToggle"><span class="slider"></span></label>
+      <span class="toggle-label on" id="lblOn" style="opacity:.3">SECURE</span>
+    </div>
+    <div class="conn"><span class="dot" id="connDot"></span><span id="connText">…</span></div>
+  </div>
+</div>
+
+<a href="/" class="back">← Home</a>
+
+<div class="activate-bar" style="margin-top:.8rem">
+  <button class="activate-btn" id="activateBtn" onclick="activateSound()">🔊 Activate Sound Box</button>
+</div>
+
+<div class="display-area" id="displayArea">
+  <div class="waiting">Waiting for payments…</div>
+</div>
+
+<div class="section" id="secLogSection" style="display:none">
+  <div class="section-header">🛡️ Security Verification Log</div>
+  <div class="section-body" id="secLog"></div>
+</div>
+
+<div class="section">
+  <div class="section-header">📜 Transaction History</div>
+  <div class="section-body" id="history"><div class="empty-state">No transactions yet</div></div>
+</div>
+
+<div class="info-panel">
+  <h3>Real UPI Sound Box Security Mechanisms</h3>
+  <ul>
+    <li>HMAC-SHA256 message signing via NPCI gateway shared keys</li>
+    <li>SIM-based encryption with hardware-bound device keys</li>
+    <li>Timestamp freshness check (30-second validity window)</li>
+    <li>Nonce &amp; Transaction ID uniqueness for anti-replay</li>
+    <li>Device certificate pinning with NPCI CA</li>
+    <li>Merchant registry cross-verification</li>
+    <li>TLS 1.3 encrypted communication channel</li>
+    <li>Physical tamper-detection circuitry</li>
+  </ul>
+</div>
+
+<script>
+const socket = io();
+let soundActive = false;
+
+socket.on('connect', () => {
+  document.getElementById('connDot').style.background='#22c55e';
+  document.getElementById('connText').textContent='Connected';
+});
+socket.on('disconnect', () => {
+  document.getElementById('connDot').style.background='#ef4444';
+  document.getElementById('connText').textContent='Offline';
+});
+
+/* Security toggle */
+document.getElementById('secToggle').addEventListener('change', function(){
+  socket.emit('toggle_security', {enabled: this.checked});
+});
+socket.on('security_mode_changed', (d) => {
+  document.getElementById('secToggle').checked = d.enabled;
+  document.getElementById('lblOff').style.opacity = d.enabled ? '.3' : '1';
+  document.getElementById('lblOn').style.opacity = d.enabled ? '1' : '.3';
+  if(soundActive){
+    const u = new SpeechSynthesisUtterance(d.enabled ? 'Security mode activated' : 'Security mode deactivated. Warning: device is unprotected');
+    u.rate = 1.1;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(u);
+  }
+});
+
+/* Activate sound */
+function activateSound(){
+  const u = new SpeechSynthesisUtterance('Sound box connected and ready');
+  u.rate = 1.1;
+  window.speechSynthesis.speak(u);
+  soundActive = true;
+  const btn = document.getElementById('activateBtn');
+  btn.textContent = '✅ Sound Active';
+  btn.classList.add('active');
+}
+
+/* Payment result */
+socket.on('payment_result', (d) => {
+  const area = document.getElementById('displayArea');
+  const p = d.payment;
+  const src = p.source === 'attacker';
+
+  if(d.accepted){
+    area.className = 'display-area accepted';
+    area.innerHTML = `
+      <div class="icon">✅</div>
+      <div class="amount green">₹${p.amount}</div>
+      <div class="detail">${p.sender} via ${p.upi_app}</div>
+      <span class="source-tag ${src?'attack':'auth'}">${src?'⚠️ ATTACKER (fooled!)':'✓ Authorized'}</span>`;
+    if(soundActive){
+      window.speechSynthesis.cancel();
+      const msg = new SpeechSynthesisUtterance(`Payment received. Rupees ${p.amount} from ${p.sender} via ${p.upi_app}`);
+      msg.rate = 1.05;
+      window.speechSynthesis.speak(msg);
+    }
+    addHistory(p, true, src);
+  } else {
+    area.className = 'display-area rejected';
+    area.innerHTML = `
+      <div class="icon">🚫</div>
+      <div class="amount red">BLOCKED</div>
+      <div class="detail">${p.attack_type || 'Unauthorized'} — ₹${p.amount}</div>
+      <span class="source-tag attack">☠️ Attack Blocked</span>`;
+    if(soundActive){
+      window.speechSynthesis.cancel();
+      const msg = new SpeechSynthesisUtterance('Warning. Unauthorized payment attempt detected and blocked.');
+      msg.rate = 1.05;
+      window.speechSynthesis.speak(msg);
+    }
+    addHistory(p, false, true);
+  }
+
+  // Security log
+  if(d.checks && d.checks.length > 0){
+    const sec = document.getElementById('secLogSection');
+    sec.style.display = 'block';
+    const log = document.getElementById('secLog');
+    let html = '';
+    let passed = 0, failed = 0;
+    d.checks.forEach(c => {
+      const ok = c.status === 'pass';
+      if(ok) passed++; else failed++;
+      html += `<div class="check ${c.status}">
+        <span class="icon-sm">${ok?'✅':'❌'}</span>
+        <div><div class="name">${c.name}</div><div class="detail">${c.detail}</div></div>
+      </div>`;
+    });
+    html += `<div class="verdict ${d.accepted?'pass':'fail'}">${d.accepted?'✅ ALL CHECKS PASSED — Payment Accepted':'❌ '+failed+' CHECK(S) FAILED — Payment Rejected'}</div>`;
+    log.innerHTML = html;
+  }
+
+  setTimeout(() => { area.className = 'display-area'; }, 3000);
+});
+
+function addHistory(p, accepted, isAttack){
+  const h = document.getElementById('history');
+  if(h.querySelector('.empty-state')) h.innerHTML='';
+  const d = document.createElement('div');
+  d.className = 'hist ' + (accepted ? 'ok' : 'blocked');
+  d.innerHTML = `<div class="h-amount" style="color:${accepted?'#34d399':'#f87171'}">₹${p.amount} — ${accepted?'Accepted':'Blocked'} ${isAttack?'('+( p.attack_type||'Attack')+')':''}</div>
+    <div class="h-meta">${p.sender} via ${p.upi_app} • ${p.time_display}</div>`;
+  h.prepend(d);
+}
+</script>
+</body>
+</html>

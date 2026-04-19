@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>☠️ Attacker Terminal</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#0a0a0a,#1a0a0a);color:#e2e8f0;min-height:100vh}
+.top-bar{display:flex;align-items:center;justify-content:space-between;padding:.8rem 1.5rem;background:rgba(239,68,68,.03);border-bottom:1px solid rgba(239,68,68,.1)}
+.top-bar h1{font-size:1rem;font-weight:600;color:#fca5a5}
+.conn{display:flex;align-items:center;gap:.4rem;font-size:.7rem;color:#64748b}
+.dot{width:8px;height:8px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.main{max-width:520px;margin:1rem auto;padding:0 1.5rem}
+.back{display:inline-flex;align-items:center;gap:.3rem;color:#64748b;text-decoration:none;font-size:.75rem;margin-bottom:1rem}
+.back:hover{color:#94a3b8}
+.card{background:rgba(255,255,255,.03);backdrop-filter:blur(10px);border:1px solid rgba(239,68,68,.1);border-radius:16px;padding:1.5rem;margin-bottom:1.2rem}
+.card h2{font-size:.9rem;font-weight:600;color:#fca5a5;margin-bottom:1rem;display:flex;align-items:center;gap:.4rem}
+label{display:block;font-size:.7rem;font-weight:500;color:#94a3b8;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.5px}
+input,select{width:100%;padding:.65rem .8rem;background:rgba(255,255,255,.05);border:1px solid rgba(239,68,68,.12);border-radius:8px;color:#e2e8f0;font-size:.85rem;font-family:'Inter',sans-serif;margin-bottom:.8rem;outline:none;transition:border .2s}
+input:focus,select:focus{border-color:#ef4444}
+select option{background:#1e1e1e;color:#e2e8f0}
+
+/* Attack type cards */
+.attack-types{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem}
+.attack-opt{padding:.7rem 1rem;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:10px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:.7rem}
+.attack-opt:hover{border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.03)}
+.attack-opt.selected{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.06)}
+.attack-opt input[type=radio]{display:none}
+.attack-opt .a-icon{font-size:1.3rem}
+.attack-opt .a-info h4{font-size:.8rem;font-weight:600;color:#fca5a5}
+.attack-opt .a-info p{font-size:.68rem;color:#64748b;margin-top:2px}
+
+.btn-attack{width:100%;padding:.8rem;background:linear-gradient(135deg,#dc2626,#b91c1c);border:none;border-radius:10px;color:#fff;font-size:.9rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;text-transform:uppercase;letter-spacing:1px}
+.btn-attack:hover{box-shadow:0 6px 25px rgba(220,38,38,.4);transform:translateY(-2px)}
+.btn-attack:active{transform:scale(.98)}
+.btn-attack:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+/* Intercepted */
+.intercept{padding:.6rem .8rem;background:rgba(255,255,255,.02);border-radius:8px;margin-bottom:.4rem;border-left:3px solid #f97316;font-size:.78rem;animation:slideIn .3s ease;display:flex;justify-content:space-between;align-items:center}
+@keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+.intercept .i-info{flex:1}
+.intercept .i-amt{font-weight:700;color:#fb923c}
+.intercept .i-meta{font-size:.65rem;color:#64748b;margin-top:2px}
+.intercept .i-actions{display:flex;gap:.3rem}
+.mini-btn{padding:.3rem .5rem;border:1px solid rgba(255,255,255,.1);border-radius:6px;background:rgba(255,255,255,.03);color:#94a3b8;font-size:.6rem;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s}
+.mini-btn:hover{border-color:rgba(239,68,68,.4);color:#fca5a5;background:rgba(239,68,68,.05)}
+
+/* Attack Log */
+.log-entry{padding:.6rem .8rem;border-radius:8px;margin-bottom:.4rem;font-size:.78rem;font-family:'Fira Code',monospace;animation:slideIn .3s ease}
+.log-entry.success{background:rgba(34,197,94,.06);border-left:3px solid #22c55e;color:#4ade80}
+.log-entry.failure{background:rgba(239,68,68,.06);border-left:3px solid #ef4444;color:#f87171}
+.log-entry .l-title{font-family:'Inter',sans-serif;font-weight:600;font-size:.75rem}
+.log-entry .l-detail{font-size:.65rem;color:#64748b;margin-top:2px}
+
+.empty{text-align:center;color:#475569;font-size:.78rem;padding:1.5rem}
+.tamper-input{display:none;margin-bottom:.8rem}
+.tamper-input.show{display:block}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <h1>☠️ Attacker Terminal</h1>
+  <div class="conn"><span class="dot" id="connDot"></span><span id="connText">…</span></div>
+</div>
+<div class="main">
+<a href="/" class="back">← Home</a>
+
+<div class="card">
+  <h2>⚔️ Launch Attack</h2>
+  <div class="attack-types">
+    <label class="attack-opt selected" onclick="selectAttack('fake',this)">
+      <input type="radio" name="atype" value="fake" checked>
+      <span class="a-icon">💉</span>
+      <div class="a-info"><h4>Fake Payment Injection</h4><p>Create a completely fabricated payment notification</p></div>
+    </label>
+    <label class="attack-opt" onclick="selectAttack('replay',this)">
+      <input type="radio" name="atype" value="replay">
+      <span class="a-icon">🔁</span>
+      <div class="a-info"><h4>Replay Attack</h4><p>Re-send a captured legitimate transaction</p></div>
+    </label>
+    <label class="attack-opt" onclick="selectAttack('tamper',this)">
+      <input type="radio" name="atype" value="tamper">
+      <span class="a-icon">✏️</span>
+      <div class="a-info"><h4>Amount Tampering</h4><p>Intercept a real transaction & change the amount</p></div>
+    </label>
+  </div>
+
+  <div id="fakeFields">
+    <label>Fake Amount (₹)</label>
+    <input type="number" id="fakeAmount" value="9999" min="1">
+    <label>Fake Sender Name</label>
+    <input type="text" id="fakeSender" value="Fake Customer">
+    <label>Fake UPI App</label>
+    <select id="fakeApp"><option>Google Pay</option><option>PhonePe</option><option>Paytm</option></select>
+  </div>
+
+  <div id="replayFields" style="display:none">
+    <label>Select a captured transaction below, then click Launch</label>
+  </div>
+
+  <div id="tamperFields" style="display:none">
+    <label>Select a captured transaction below</label>
+    <label style="margin-top:.5rem">New Tampered Amount (₹)</label>
+    <input type="number" id="tamperAmount" value="99999" min="1">
+  </div>
+
+  <button class="btn-attack" id="attackBtn" onclick="launchAttack()">🚀 Launch Attack</button>
+</div>
+
+<div class="card">
+  <h2>📡 Intercepted Transactions</h2>
+  <div id="intercepted"><div class="empty">No transactions intercepted yet. Send a legitimate payment from the Sender page first.</div></div>
+</div>
+
+<div class="card">
+  <h2>📋 Attack Log</h2>
+  <div id="attackLog"><div class="empty">No attacks launched yet</div></div>
+</div>
+</div>
+
+<script>
+const socket = io();
+let currentAttack = 'fake';
+let capturedPayments = [];
+let selectedCaptured = null;
+
+socket.on('connect', () => {
+  document.getElementById('connDot').style.background='#22c55e';
+  document.getElementById('connText').textContent='Connected';
+});
+socket.on('disconnect', () => {
+  document.getElementById('connDot').style.background='#ef4444';
+  document.getElementById('connText').textContent='Offline';
+});
+
+function selectAttack(type, el){
+  currentAttack = type;
+  document.querySelectorAll('.attack-opt').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('fakeFields').style.display = type==='fake'?'block':'none';
+  document.getElementById('replayFields').style.display = type==='replay'?'block':'none';
+  document.getElementById('tamperFields').style.display = type==='tamper'?'block':'none';
+}
+
+/* Intercept legitimate payments */
+socket.on('intercepted_payment', (p) => {
+  capturedPayments.push(p);
+  const div = document.getElementById('intercepted');
+  if(div.querySelector('.empty')) div.innerHTML='';
+  const idx = capturedPayments.length - 1;
+  const el = document.createElement('div');
+  el.className = 'intercept';
+  el.innerHTML = `<div class="i-info"><div class="i-amt">₹${p.amount}</div><div class="i-meta">${p.sender} via ${p.upi_app} • TXN: ${p.txn_id.substring(0,12)}…</div></div>
+    <div class="i-actions">
+      <button class="mini-btn" onclick="selectCapture(${idx})">📌 Select</button>
+    </div>`;
+  div.prepend(el);
+});
+
+function selectCapture(idx){
+  selectedCaptured = capturedPayments[idx];
+  document.querySelectorAll('.intercept').forEach(e=>e.style.borderColor='rgba(249,115,22,.3)');
+  event.target.closest('.intercept').style.borderColor='#ef4444';
+  event.target.textContent = '✅ Selected';
+}
+
+async function launchAttack(){
+  const btn = document.getElementById('attackBtn');
+  btn.disabled=true; btn.textContent='⏳ Attacking…';
+  let body = {attack_type: currentAttack};
+  if(currentAttack==='fake'){
+    body.amount = document.getElementById('fakeAmount').value;
+    body.sender = document.getElementById('fakeSender').value;
+    body.upi_app = document.getElementById('fakeApp').value;
+  } else if(currentAttack==='replay'){
+    if(!selectedCaptured){alert('Select a captured transaction first!');btn.disabled=false;btn.textContent='🚀 Launch Attack';return;}
+    body.captured_payment = selectedCaptured;
+  } else if(currentAttack==='tamper'){
+    if(!selectedCaptured){alert('Select a captured transaction first!');btn.disabled=false;btn.textContent='🚀 Launch Attack';return;}
+    body.captured_payment = selectedCaptured;
+    body.new_amount = document.getElementById('tamperAmount').value;
+  }
+  try{
+    await fetch('/api/attack',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  }catch(e){alert('Error');}
+  btn.disabled=false; btn.textContent='🚀 Launch Attack';
+}
+
+/* Attack feedback */
+socket.on('attack_feedback', (d) => {
+  const log = document.getElementById('attackLog');
+  if(log.querySelector('.empty')) log.innerHTML='';
+  const el = document.createElement('div');
+  const ok = d.accepted;
+  el.className='log-entry '+(ok?'success':'failure');
+  let checksHtml = '';
+  if(d.checks && d.checks.length){
+    checksHtml = d.checks.map(c=>`${c.status==='pass'?'✅':'❌'} ${c.name}`).join(' • ');
+  }
+  el.innerHTML=`<div class="l-title">${ok?'✅ ATTACK SUCCEEDED — Sound box was fooled!':'❌ ATTACK FAILED — Blocked by security'}</div>
+    <div class="l-detail">${d.payment.attack_type||'Attack'} • ₹${d.payment.amount}${checksHtml?' • '+checksHtml:''}</div>`;
+  log.prepend(el);
+});
+</script>
+</body>
+</html>

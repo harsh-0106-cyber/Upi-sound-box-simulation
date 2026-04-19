@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💳 Authorized Payment Sender</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#0c1222,#1a1a3e);color:#e2e8f0;min-height:100vh}
+.top-bar{display:flex;align-items:center;justify-content:space-between;padding:1rem 2rem;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.06)}
+.top-bar h1{font-size:1.1rem;font-weight:600}
+.top-bar .badge{display:flex;align-items:center;gap:.5rem;font-size:.75rem;padding:.4rem .8rem;border-radius:20px;background:rgba(59,130,246,.15);color:#60a5fa}
+.dot{width:8px;height:8px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.main{max-width:500px;margin:3rem auto;padding:0 1.5rem}
+.card{background:rgba(255,255,255,.04);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:2rem;margin-bottom:1.5rem}
+.card h2{font-size:1rem;font-weight:600;margin-bottom:1.5rem;color:#93c5fd;display:flex;align-items:center;gap:.5rem}
+label{display:block;font-size:.75rem;font-weight:500;color:#94a3b8;margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.5px}
+input,select{width:100%;padding:.75rem 1rem;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#e2e8f0;font-size:.9rem;font-family:'Inter',sans-serif;margin-bottom:1rem;outline:none;transition:border .2s}
+input:focus,select:focus{border-color:#6366f1}
+select option{background:#1e293b;color:#e2e8f0}
+.btn{width:100%;padding:.85rem;background:linear-gradient(135deg,#3b82f6,#6366f1);border:none;border-radius:12px;color:#fff;font-size:.95rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;position:relative;overflow:hidden}
+.btn:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(99,102,241,.4)}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn .ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.3);transform:scale(0);animation:ripple .6s linear}
+@keyframes ripple{to{transform:scale(4);opacity:0}}
+.history-item{padding:.8rem 1rem;background:rgba(255,255,255,.03);border-radius:10px;margin-bottom:.5rem;border-left:3px solid #3b82f6;animation:slideIn .3s ease}
+@keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+.history-item .amt{font-weight:700;color:#60a5fa;font-size:1.05rem}
+.history-item .meta{font-size:.75rem;color:#64748b;margin-top:.2rem}
+.empty{text-align:center;color:#475569;font-size:.85rem;padding:2rem}
+.status-msg{text-align:center;padding:.6rem;border-radius:8px;margin-bottom:1rem;font-size:.8rem;font-weight:500;animation:slideIn .3s ease;display:none}
+.status-msg.success{display:block;background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.2)}
+.back{display:inline-flex;align-items:center;gap:.3rem;color:#64748b;text-decoration:none;font-size:.8rem;margin-bottom:1rem}
+.back:hover{color:#94a3b8}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <h1>💳 Authorized Payment Terminal</h1>
+  <div class="badge"><span class="dot" id="connDot"></span><span id="connText">Connecting…</span></div>
+</div>
+<div class="main">
+  <a href="/" class="back">← Back to Home</a>
+  <div id="statusMsg" class="status-msg success"></div>
+  <div class="card">
+    <h2>📤 Send Payment</h2>
+    <form id="payForm" autocomplete="off">
+      <label>Amount (₹)</label>
+      <input type="number" id="amount" min="1" placeholder="Enter amount" required>
+      <label>Sender Name</label>
+      <input type="text" id="senderName" placeholder="Enter sender name" required>
+      <label>UPI App</label>
+      <select id="upiApp">
+        <option>Google Pay</option>
+        <option>PhonePe</option>
+        <option>Paytm</option>
+        <option>BHIM</option>
+      </select>
+      <button type="submit" class="btn" id="sendBtn">Send Payment →</button>
+    </form>
+  </div>
+  <div class="card">
+    <h2>📜 Sent Payments</h2>
+    <div id="history"><div class="empty">No payments sent yet</div></div>
+  </div>
+</div>
+
+<script>
+const socket = io();
+socket.on('connect', () => {
+  document.getElementById('connDot').style.background = '#22c55e';
+  document.getElementById('connText').textContent = 'Connected';
+});
+socket.on('disconnect', () => {
+  document.getElementById('connDot').style.background = '#ef4444';
+  document.getElementById('connText').textContent = 'Disconnected';
+});
+
+document.getElementById('payForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+
+  const body = {
+    amount: document.getElementById('amount').value,
+    sender: document.getElementById('senderName').value,
+    upi_app: document.getElementById('upiApp').value
+  };
+
+  try {
+    const res = await fetch('/api/send_payment', {
+      method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    const msg = document.getElementById('statusMsg');
+    msg.textContent = `✅ Payment sent! TXN: ${data.txn_id}`;
+    msg.style.display = 'block';
+    setTimeout(() => msg.style.display = 'none', 4000);
+
+    const hist = document.getElementById('history');
+    if (hist.querySelector('.empty')) hist.innerHTML = '';
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    div.innerHTML = `<div class="amt">₹${body.amount}</div><div class="meta">${body.sender} via ${body.upi_app} • ${new Date().toLocaleTimeString()}</div>`;
+    hist.prepend(div);
+  } catch(err) {
+    alert('Error sending payment');
+  }
+  btn.disabled = false; btn.textContent = 'Send Payment →';
+});
+</script>
+</body>
+</html>

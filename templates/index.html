@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UPI Sound Box — Security Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#0a0a1a;color:#e2e8f0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+.bg{position:fixed;inset:0;z-index:0}
+.bg .orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:.3;animation:float 8s ease-in-out infinite}
+.bg .orb:nth-child(1){width:400px;height:400px;background:#6366f1;top:-100px;left:-100px;animation-delay:0s}
+.bg .orb:nth-child(2){width:350px;height:350px;background:#ec4899;bottom:-80px;right:-80px;animation-delay:2s}
+.bg .orb:nth-child(3){width:300px;height:300px;background:#14b8a6;top:50%;left:50%;transform:translate(-50%,-50%);animation-delay:4s}
+@keyframes float{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-30px) scale(1.05)}}
+.container{position:relative;z-index:1;text-align:center;padding:2rem}
+h1{font-size:2.8rem;font-weight:800;background:linear-gradient(135deg,#6366f1,#ec4899,#14b8a6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:.5rem}
+.subtitle{font-size:1.1rem;color:#94a3b8;margin-bottom:3rem;font-weight:300}
+.cards{display:flex;gap:2rem;flex-wrap:wrap;justify-content:center}
+.card{background:rgba(255,255,255,.05);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:2.5rem 2rem;width:280px;text-decoration:none;color:#e2e8f0;transition:all .3s ease;position:relative;overflow:hidden}
+.card:hover{transform:translateY(-8px);border-color:rgba(255,255,255,.25);box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:20px 20px 0 0}
+.card.sender::before{background:linear-gradient(90deg,#3b82f6,#6366f1)}
+.card.soundbox::before{background:linear-gradient(90deg,#10b981,#14b8a6)}
+.card.attacker::before{background:linear-gradient(90deg,#ef4444,#f97316)}
+.card .icon{font-size:3rem;margin-bottom:1rem;display:block}
+.card h2{font-size:1.3rem;font-weight:700;margin-bottom:.5rem}
+.card p{font-size:.85rem;color:#94a3b8;line-height:1.6}
+.card .tag{display:inline-block;margin-top:1rem;padding:.3rem .8rem;border-radius:20px;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:1px}
+.card.sender .tag{background:rgba(59,130,246,.15);color:#60a5fa}
+.card.soundbox .tag{background:rgba(16,185,129,.15);color:#34d399}
+.card.attacker .tag{background:rgba(239,68,68,.15);color:#f87171}
+.info{margin-top:3rem;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:1.5rem 2rem;max-width:700px}
+.info h3{font-size:.9rem;color:#6366f1;margin-bottom:.5rem;font-weight:600}
+.info p{font-size:.8rem;color:#64748b;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="bg"><div class="orb"></div><div class="orb"></div><div class="orb"></div></div>
+<div class="container">
+<h1>🔊 UPI Sound Box</h1>
+<p class="subtitle">Security Demonstration — Authorized vs. Attacker Scenarios</p>
+<div class="cards">
+  <a href="/sender" class="card sender">
+    <span class="icon">💻</span>
+    <h2>Payment Sender</h2>
+    <p>Authorized UPI payment terminal. Send legitimate, digitally-signed payments to the sound box.</p>
+    <span class="tag">Laptop</span>
+  </a>
+  <a href="/soundbox" class="card soundbox">
+    <span class="icon">🔊</span>
+    <h2>UPI Sound Box</h2>
+    <p>Receives & announces payments. Toggle security mode to see verification in action.</p>
+    <span class="tag">Tablet</span>
+  </a>
+  <a href="/attacker" class="card attacker">
+    <span class="icon">☠️</span>
+    <h2>Attacker Terminal</h2>
+    <p>Attempt fake payments, replay attacks & amount tampering to fool the sound box.</p>
+    <span class="tag">Phone</span>
+  </a>
+</div>
+<div class="info">
+  <h3>🎓 Presentation Flow</h3>
+  <p>1. Open each interface on a separate device &nbsp;→&nbsp; 2. Send a legitimate payment from Sender &nbsp;→&nbsp; 3. Sound Box announces it &nbsp;→&nbsp; 4. Switch to Attacker & send a fake payment with Security OFF (it succeeds!) &nbsp;→&nbsp; 5. Toggle Security ON on the Sound Box &nbsp;→&nbsp; 6. Repeat the attack (it gets blocked with detailed logs)</p>
+</div>
+</div>
+</body>
+</html>
